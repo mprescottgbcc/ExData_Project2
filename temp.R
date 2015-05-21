@@ -1,42 +1,22 @@
-par(mfrow = c(2,2))
+par(mfrow=c(1,2))
 with(
-  NEI,
+  emissionsYear,
+{
   plot(
-    year, Emissions,
-    xlab="Year",
-    ylab="Emissions",
-    main = "Emissions by Year from All Sources",
+    year,total,
+    xlab="Year", ylab="Total Emissions",
+    main="Total PM2.5 Emissions\nFrom All Sources by Year",
     pch=20
   )
+  lines(year,total)
+}
 )
+
 with(
-  NEI,
+  emissionsYearSCC,
   plot(
-    year, Emissions,
-    xlab = "Year",
-    ylab = "Emissions",
-    ylim = c(0,outerFence),
-    main = "Emissions by Year from All Sources\nOutliers Removed",
-    pch=20
-  )
-)
-with(
-  NEI,
-  plot(
-    year, Emissions,
-    xlab="Year",
-    ylab="Emissions",
-    ylim=c(outerFence,maxEmissions),
-    main = "Emissions by Year from All Sources\nOutliers Only"
-  )
-)
-with(
-  NEI,
-  plot(
-    SCC, Emissions,
-    xlab="Source Classification Code (SCC)",
-    ylab="Emissions",
-    ylim=c(outerFence,maxEmissions),
-    main = "Emissions by Source Classification Code\nOutliers Only"
+    year,total,
+    xlab="Year", ylab="Total Emissions by SCC",
+    main="Total PM2.5 Emissions\nBy Source Per Year"
   )
 )

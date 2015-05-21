@@ -24,6 +24,7 @@ library(dplyr)
 #SCC <- readRDS("Source_Classification_Code.rds")
 #coalSrc <- SCC[grep('coal',SCC$Short.Name,ignore.case=TRUE),]
 #onroadSrc <- SCC[SCC$Data.Category=='Onroad',]
+#sccToNames <- SCC %>% select(SCC,Short.Name)
 
 # I decided to create multiple plots to explore the nature of the emissions over time by source.
 # This is where the dplyr package is VERY helpful because of its speed in working with very large
@@ -55,11 +56,13 @@ emissionsYearSCC  <- NEI %>%
 outlierSCC <- emissionsYearSCC %>%
   filter(total>400000) %>%
   ungroup() %>%
-  count(SCC)
-  
+  count(SCC) %>%
+  mutate(Name = sccToName[sccToName$SCC==SCC,sccToName$Short.Name])
+  select(SCC)
+
 
 # Now, on with the plotting!
-par(mfrow=c(1,2))
+# par(mfrow=c(1,2))
 with(
   subset(emissionsYearSCC,total>400000),
   {
