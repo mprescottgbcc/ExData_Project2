@@ -18,19 +18,20 @@ library(dplyr)
 # sources for each of the years 1999, 2002, 2005, and 2008.
 
 
-# Create data frames from each of the two data files required for the project
-#NEI <- readRDS("summarySCC_PM25.rds")
-#NEI <- NEI[,c('fips','SCC','Emissions','type','year')]
-#SCC <- readRDS("Source_Classification_Code.rds")
-#coalSrc <- SCC[grep('coal',SCC$Short.Name,ignore.case=TRUE),]
-#onroadSrc <- SCC[SCC$Data.Category=='Onroad',]
-#sccToNames <- SCC %>% select(SCC,Short.Name)
+# Create data frames from each of the two data files required for the project. Additionally, stip
+# out any extraneous columns and make data conversions as appropriate.
+NEI <- readRDS("summarySCC_PM25.rds")
+NEI <- NEI %>% select(fips,SCC,Emissions,type,year)
+SCC <- readRDS("Source_Classification_Code.rds")
+SCC <- SCC %>% select(SCC,Data.Category,EI.Sector)
+SCC$SCC <- as.character(SCC$SCC)
 
-# I decided to create multiple plots to explore the nature of the emissions over time by source.
+
+# I decided to create multiple graphs to explore the nature of the emissions over time by source.
 # This is where the dplyr package is VERY helpful because of its speed in working with very large
 # datasets.
 #
-# The top plot graphs the emissions from all sources summarized by year. If one were to go solely
+# The top graph shows the emissions from all sources summarized by year. If one were to go solely
 # on this graph, it would seem pretty clear that particulate matter emissions have decreased
 # significantly from 1999 to 2008. The following creates the data frame needed for this plot:
 
@@ -42,34 +43,81 @@ emissionsYear  <- NEI %>%
 # emissions factor in to the analysis. The next graph further breaks the total emissions down by
 # source (SCC - Source Code Classification). We can now see that there are a small number of 
 # specific PM emission sources that have a major impact on the yearly totals. Some questions: are
-# these sources that will have a consistent presence over time or were there specific rare events that
-# produced extraordinary amounts of these PM emissions? The following data frame is used to produce
+# these sources ones that will have a consistent presence over time or were there specific rare events
+# producing extraordinary amounts of these PM emissions? The following data frame is used to produce
 # the second graph:
 
-emissionsYearSCC  <- NEI %>% 
-  group_by(year,SCC) %>%
-  summarize(total = sum(Emissions))
+emissionsYearSCC <- NEI %>% 
+                      group_by(year,SCC) %>%
+                      summarize(total = sum(Emissions))
 
-# The third graph is used to identify the apparent outliers in the data set (determined visually
-# from the second graph). Totals by SCC that are more than 400,000 tons appear to be unusual, so
-# let's see what they are and which years they are present.
-outlierSCC <- emissionsYearSCC %>%
-  filter(total>400000) %>%
-  ungroup() %>%
-  count(SCC) %>%
-  mutate(Name = sccToName[sccToName$SCC==SCC,sccToName$Short.Name])
-  select(SCC)
+# The third graph is used to study the outliers in the data set which appear to be those emissions
+# measuring higher than 400,000 tons based on visual inspection of the second graph. Let's see what
+# they are and which years they are present.
 
+outliers <- inner_join(emissionsYearSCC %>% filter(total>400000),SCC, by='SCC')
+outlierSCC <- outliers %>% group_by(SCC) %>% count(SCC) %>% select(SCC)
+outlierSCC <- outlierSCC$SCC    #easier to use this as a vector instead of a data frame or table
 
-# Now, on with the plotting!
-# par(mfrow=c(1,2))
+# Now, on with the plotting! The following will generate the three graphs described above in one
+# column in a single plot. The bottom graph has a legend with the SCC for each outlier represented
+# in the graph. The resulting plot will be stored in a PNG file named "q1plot.png" in the working 
+# directory.
+
+png(file="q1Plot.png",width=840,height=1200)
+par(mfrow=c(3,1))
+
+# Graph 1: Total emissions in the US per year
 with(
-  subset(emissionsYearSCC,total>400000),
+  emissionsYear,
   {
     plot(
       year,total,
-      xlab="Year", ylab="Total Emissions by SCC",
-      main="Total PM2.5 Emissions > 400,000 tons\nBy Source Per Year"
+      xlab="Year", ylab="Total Emissions",
+      main="Total PM2.5 Emissions\nFrom All Sources by Year",
+      pch=20
     )
+    lines(year,total)
   }
 )
+
+# Graph 2: Scatterplot of total emissions for each SCC in the US per year. Here's where you can
+# see where there may be outliers in the data.
+with(
+  emissionsYearSCC,
+  plot(
+    year,total,
+    xlab="Year", ylab="Total Emissions by SCC",
+    main="Total PM2.5 Emissions\nBy Source Per Year"
+  )
+)
+
+# Graph 3: Only total emissions for those sources that result in more than 400,000 tons per year
+# are represented in this graph. Each SCC is assigned a different color and symbol to better
+# visualize any potential pattern. A legend is produced to match the color and symbol to the SCC
+with(
+  outliers, {
+    plot(
+      year,total,
+      xlab="Year", ylab="Total Emissions by SCC",
+      main="Total PM2.5 Emissions > 400,000 tons\nBy Source Per Year",
+      type='n'
+    )
+
+    # These next vectors are used for applying color and building the legend for the third plot
+    cols <- character()
+    symbols <- vector()
+    allColors <- colors()
+  
+    for(i in 1:length(outlierSCC)) {
+      cols <- c(cols,allColors[i*27])
+      symbols <- c(symbols,(i*2+6))
+      with(
+        subset(outliers, SCC == outlierSCC[i]),
+        points(year, total, col = cols[i],pch=symbols[i])
+      )
+    }
+    legend("topright",col=cols,legend=outlierSCC,pch=symbols)
+  }
+)
+dev.off()
